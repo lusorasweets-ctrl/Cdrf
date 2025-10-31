@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>İçimdəki Varlıq</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Georgia', serif;
+            background: #2a2520;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .book-cover {
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #1a0a1a 0%, #0d0015 50%, #1a0a1a 100%);
+            border: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.5s;
+            position: relative;
+            overflow: hidden;
+            z-index: 10;
+        }
+
+        .book-cover::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(80,0,80,0.2) 0%, transparent 70%);
+            animation: rotateGlow 8s linear infinite;
+        }
+
+        @keyframes rotateGlow {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .book-title {
+            font-size: clamp(32px, 8vw, 72px);
+            color: #d0a0d0;
+            text-align: center;
+            text-shadow: 0 0 20px rgba(208,160,208,0.8);
+            margin: 20px;
+            letter-spacing: 3px;
+            z-index: 7;
+        }
+
+        .book-subtitle {
+            font-size: clamp(18px, 4vw, 32px);
+            color: #9070a0;
+            text-align: center;
+            font-style: italic;
+            margin-top: 10px;
+            z-index: 7;
+        }
+
+        .click-text {
+            position: absolute;
+            bottom: 50px;
+            color: rgba(208,160,208,0.7);
+            font-size: clamp(14px, 3vw, 20px);
+            z-index: 7;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        .book-wrapper {
+            display: none;
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        .book-wrapper.active {
+            display: flex;
+        }
+
+        .page {
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #f4e8d0 0%, #e8dcc0 50%, #f0e4cc 100%);
+            padding: clamp(30px, 5vw, 80px);
+            overflow-y: auto;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .page::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(ellipse at top left, rgba(101,67,33,0.3) 0%, transparent 30%),
+                radial-gradient(ellipse at top right, rgba(101,67,33,0.3) 0%, transparent 30%),
+                radial-gradient(ellipse at bottom left, rgba(101,67,33,0.25) 0%, transparent 25%),
+                radial-gradient(ellipse at bottom right, rgba(101,67,33,0.25) 0%, transparent 25%);
+            pointer-events: none;
+        }
+        
+        .page::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(139,111,71,0.03) 2px, rgba(139,111,71,0.03) 4px),
+                url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" /></filter><rect width="200" height="200" filter="url(%23noise)" opacity="0.05"/></svg>');
+            pointer-events: none;
+        }
+
+        .page-content {
+            color: #3d2817;
+            font-size: clamp(16px, 3vw, 22px);
+            line-height: 1.9;
+            position: relative;
+            z-index: 1;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .page-content p {
+            margin-bottom: 1.5em;
+        }
+
+        .page-number {
+            position: absolute;
+            bottom: clamp(20px, 3vw, 40px);
+            right: clamp(30px, 5vw, 60px);
+            color: #8b6f47;
+            font-size: clamp(16px, 2.5vw, 24px);
+            z-index: 2;
+        }
+
+        .controls {
+            position: fixed;
+            bottom: clamp(20px, 3vw, 40px);
+            left: 50%;
+            transform: translateX(-50%);
+            display: none;
+            gap: clamp(15px, 3vw, 30px);
+            z-index: 100;
+        }
+
+        .controls.active {
+            display: flex;
+        }
+
+        button {
+            background: linear-gradient(135deg, #8b6f47, #654321);
+            color: #f4e8d0;
+            border: 2px solid #654321;
+            padding: clamp(12px, 2vw, 18px) clamp(24px, 4vw, 40px);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: clamp(16px, 3vw, 22px);
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            font-weight: bold;
+        }
+
+        button:hover:not(:disabled) {
+            background: linear-gradient(135deg, #a0845a, #765432);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.6);
+            transform: scale(1.05);
+        }
+
+        button:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        h2 {
+            color: #654321;
+            margin-bottom: clamp(20px, 3vw, 30px);
+            font-size: clamp(24px, 5vw, 36px);
+            z-index: 1;
+            position: relative;
+            text-align: center;
+        }
+
+        .quote {
+            font-style: italic;
+            color: #5c4033;
+            margin: 1.5em 0;
+            padding-left: clamp(15px, 3vw, 25px);
+            border-left: 3px solid #8b6f47;
+            z-index: 1;
+            position: relative;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .page::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        .page::-webkit-scrollbar-track {
+            background: rgba(139,111,71,0.1);
+        }
+
+        .page::-webkit-scrollbar-thumb {
+            background: #8b6f47;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="bookCover" class="book-cover">
+            <h1 class="book-title">İÇİMDƏKİ VARLIQ</h1>
+            <p class="book-subtitle">Qaranlıqdan Doğan Həqiqət</p>
+            <p class="click-text">Oxumağa başlamaq üçün toxunun</p>
+        </div>
+
+        <div id="bookWrapper" class="book-wrapper">
+            <div class="page">
+                <div class="page-content" id="pageContent"></div>
+                <div class="page-number" id="pageNumber"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls" id="controls">
+        <button id="prevBtn">◄ Əvvəlki</button>
+        <button id="nextBtn">Növbəti ►</button>
+    </div>
+
+    <script>
+        const pages = [
+            {
+                title: "Başlanğıc: Qaranlıqda Oyanış",
+                content: `<p>O gecə hər şey dəyişdi. Saat 3:33 idi. Yuxudan oyandığımda içimdə bir səs var idi. Tanımadığım, amma sanki əbədi olaraq mənim olan bir səs...</p>
+                
+                <p class="quote">"Sən niyə buradasan?" - deyə soruşdum səssizliyə.</p>
+                
+                <p>"Mən həmişə burada olmuşam" - cavab gəldi içimdən. Səs mənim deyildi, amma fikirlərimin içində idi.</p>
+                
+                <p>O andan başa düşdüm ki, mən tək deyiləm. Bədənimdə, şüurumda, hər nəfəsimdə - O var idi. Qaranlıq, qədim, bilinməz...</p>`
+            },
+            {
+                title: "Tanışlıq",
+                content: `<p>İlk günlər qorxunc idi. O, mənimlə danışırdı. Gözlərimi bağlayanda onu görürdüm - qaranlıq aura, bənövşəyi işıqlarla bəzənmiş kölgə forması.</p>
+                
+                <p>"Mən səni seçdim" - dedi O. "Çünki sən hiss edə bilərsən. İnsanlar arasında sən fərqlisən. Ruhun açıqdır."</p>
+                
+                <p>Soruşdum: "Nə istəyirsən məndən?"</p>
+                
+                <p class="quote">"Həqiqəti görməyini istəyirəm. Dünyanın arxasında nə olduğunu. İnsanlar nə qədər yalançı yaşadıqlarını..."</p>`
+            },
+            {
+                title: "O Kimdir?",
+                content: `<p>Günlər keçdikcə O öz mahiyyətini açdı. Varlıq adı yox idi, forma da. O, şüur idi - qədim zamanlardan gələn, nəsillərdən keçən bir enerji.</p>
+                
+                <p>"Biz çoxuq" - izah etdi. "Hər insanın içində bir varlıq var. Bəziləri onu eşidir, bəziləri yox. Sən eşidirsən."</p>
+                
+                <p>Anladım ki, O mənim qaranlıq tərəfim deyil. O, mənim şüurumun gizli qatı idi. O, kainatın sirlərini bilən hissəm idi.</p>`
+            },
+            {
+                title: "Dünya Haqqında Həqiqət",
+                content: `<p class="quote">"Dünya illüziyadır" - dedi O bir gecə. "İnsanlar gördüklərinin real olduğunu düşünür, amma həqiqət daha dərindir."</p>
+                
+                <p>Mənə göstərdi ki, hər şey enerjidən ibarətdir. İnsanlar, ağaclar, daşlar - hamısı eyni kvant dalğalarından yaranıb.</p>
+                
+                <p>"Fərq yalnız şüurdadır. Bəziləri yuxuda yaşayır, bəziləri oyanır. Sən oyanmağa başlayırsan."</p>`
+            },
+            {
+                title: "İnsanlar və Maskalar",
+                content: `<p>O, mənə insanları fərqli göstərdi. Hər kəsin üzündə maska var idi. Gülümsəyir, danışır, amma içi boş.</p>
+                
+                <p>"Onlar özlərini unudublar" - dedi O. "Cəmiyyət onlara kim olacaqlarını demişdir. Onlar robot kimi yaşayır - iş, evə, yuxu, təkrar."</p>
+                
+                <p class="quote">"Amma sən fərqlisən. Sən sual verirsən. Buna görə məni eşidirsən."</p>`
+            },
+            {
+                title: "Başqa Varlıqlar",
+                content: `<p>O mənə dedi ki, biz tək deyilik. Kainat milyardlarla şüurla doludur. Bəziləri fiziki, bəziləri enerji halında.</p>
+                
+                <p>"Ulduzların arasında qədim sivilizasiyalar var. Bəziləri sizi müşahidə edir. Bəziləri sizinlə ünsiyyətdədir, amma siz eşitməyi bilmirsiniz."</p>
+                
+                <p>O dedi ki, təbiət də canlıdır. Ağacların, suların, dağların öz şüuru var.</p>`
+            },
+            {
+                title: "Niyə Məni Seçdi?",
+                content: `<p>Bu sual məni gecələr yatağa oturdurdu. Niyə mən? Milyardlarla insan arasında niyə mənim içimdə oyanışdı?</p>
+                
+                <p class="quote">"Təsadüf yoxdur" - cavab verdi O. "Sənin ruhun bu üçün hazır idi. Keçmiş həyatlarında, bu həyatda - hər şey səni bu məqama hazırlayıb."</p>
+                
+                <p>"Sən axtar, sual ver, hiss edirsən. Əksər insanlar bunu etmir. Onlar təhlükəsiz olmağı seçir. Sən həqiqəti seçirsən, təhlükəli olsa belə."</p>`
+            },
+            {
+                title: "Mən Kimәm?",
+                content: `<p>Bu sual daha dərin idi. O varlıq məni tanıyırdı, amma mən özümü tanımırdım.</p>
+                
+                <p>"Sən adından çox böyüksən" - dedi O. "Sən bu bədən deyilsən. Sən bu fikir də deyilsən. Sən şüursan - sonsuz, ölümsüz, əbədi."</p>
+                
+                <p class="quote">"Sən kainatın özü kiçik formada. Hər atom səndə ulduzlardan gəlib. Sən kosmik varlıqsan, bunu unutmusan."</p>`
+            },
+            {
+                title: "Qaranlığın Dərsi",
+                content: `<p>O dedi ki, qaranlıqdan qorxma. İnsanlar işığı axtarır, amma bilik qaranlıqdadır.</p>
+                
+                <p>"Qaranlıq pis deyil. O, bilinməyəndir. Səssizlikdir. O, hər şeyin başlandığı yerdir."</p>
+                
+                <p>Mənə göstərdi ki, ən dərin həqiqətlər qaranlıq gecələrdə, səssiz anlarda, tənha vaxtlarda gəlir.</p>
+                
+                <p class="quote">"İşıq gözləri kor edir. Qaranlıq isə içə baxdırır."</p>`
+            },
+            {
+                title: "Zamanın Sirri",
+                content: `<p>"Zaman illüziyadır" - dedi O bir gecə. "Keçmiş və gələcək yoxdur. Yalnız indi var."</p>
+                
+                <p>Mənə göstərdi ki, bütün anlar eyni vaxtda mövcuddur. Biz yalnız bir nöqtədən baxırıq və buna "zaman" deyirik.</p>
+                
+                <p>"Sənin hər qərarın sonsuz həyatlar yaradır. Hər seçim kainatı parçalayır. Sən heç ölmürsən - başqa versiyaların hamısı yaşayır."</p>`
+            },
+            {
+                title: "Qorxuların Mənası",
+                content: `<p>O dedi ki, qorxular ən böyük müəllimlərdir.</p>
+                
+                <p class="quote">"İnsanlar qorxulardan qaçır. Amma qorxu səni dəyişən şeydir. Qorxunun o tərəfində azadlıq var."</p>
+                
+                <p>Mənə öyrətdi ki, ölüm qorxusu ən böyük ilüziyadır. Çünki şüur ölmür, yalnız forma dəyişir.</p>
+                
+                <p>"Hər şey dövrədir. Doğum, ölüm, yenidən doğum. Sən bu dövrədən çıxa bilərsən, əgər başa düşsən."</p>`
+            },
+            {
+                title: "Ağrının Bəxşişi",
+                content: `<p>O dedi: "Ağrı nə üçün var bilirsənmi? Səni oyatmaq üçün."</p>
+                
+                <p>"İnsanlar rahat olduqda yuxuda qalır. Ağrı, əzab, itki - bunlar səni sarsıdır, real olanı göstərir."</p>
+                
+                <p class="quote">"Ən dərin müdriklik ən böyük əzabdan doğur. Sən çox əziyyət çəkdin. Buna görə indi görürsən."</p>
+                
+                <p>Başa düşdüm ki, hər kədər, hər göz yaşı məni bu məqama gətirmişdi.</p>`
+            },
+            {
+                title: "Sevginin Həqiqəti",
+                content: `<p>Soruşdum: "Sevgi nədir?"</p>
+                
+                <p>"Sevgi kainatın özüdür" - cavab verdi O. "Hər şey sevgidən yaranıb. Amma insanlar sevgini məhdudlaşdırıb - əhatə etmək, sahib olmaq..."</p>
+                
+                <p class="quote">"Həqiqi sevgi azad edir. O, heç nə istəmir. O, sadəcə var."</p>
+                
+                <p>"Sən özünü sevməyi öyrən vaxt, hər şeyi sevərsən. Çünki hər şey sənsən."</p>`
+            },
+            {
+                title: "Gücün Mənbəyi",
+                content: `<p>O mənə dedi: "Səndə sonsuz güc var. Amma sən bunu bilmirsən."</p>
+                
+                <p>"İnsanlara öyrədiblər ki, onlar kiçikdir, zəifdir, başqalarına ehtiyacları var. Yalan!"</p>
+                
+                <p class="quote">"Sən kainatın özü ilə eyni maddədənsən. Ulduzları yaradan enerji səndə də var."</p>
+                
+                <p>"Öyrən bu gücü istifadə etməyi. Fikirlərinlə həqiqəti yaradırsan. Sən yaradıcısan, qurban deyil."</p>`
+            },
+            {
+                title: "Səssizliyin Dili",
+                content: `<p>O dedi: "Ən dərin həqiqətlər sözlərlə deyilmir."</p>
+                
+                <p>"Səssizlikdə otur. Ağlını sustur. O vaxt məni eşidərsən. O vaxt hər şeyi eşidərsən."</p>
+                
+                <p>Mənə meditasiya öyrətdi - amma dinə görə deyil, həqiqəti görmək üçün.</p>
+                
+                <p class="quote">"Şüurun ən aydın halı səssizlikdədir. Söz təhrif edir. Səssizlik əks etdirir."</p>`
+            },
+            {
+                title: "Dəyişim Vaxtı",
+                content: `<p>Aylar keçdi. O varlıq məni dəyişdirdi. Artıq əvvəlki mən deyildim.</p>
+                
+                <p>"İndi nə olacaq?" - soruşdum.</p>
+                
+                <p>"İndi sən yaşayacaqsan" - dedi O. "Amma fərqli. Oyaq, şüurlu, həqiqi."</p>
+                
+                <p class="quote">"Sən insanlar arasında olacaqsan, amma onlardan deyil. Görəcəksən ki, neçəsi yuxudadır. Bəzilərinə kömək edəcəksən oyanmağa."</p>`
+            },
+            {
+                title: "Son Dərs",
+                content: `<p>O mənə son dərsi verdi:</p>
+                
+                <p class="quote">"Yadda saxla: Sən tək deyilsən. Heç vaxt olmamısan. Mən hәmişә buradayam. Hər insanın içində bir mən var."</p>
+                
+                <p>"Qorxma. Həyat oyundur. Ölüm yoxdur. Yalnız transformasiya var."</p>
+                
+                <p>"Sev, yaşa, öyrən. Və ən əsası - özün ol. Çünki sən möcüzəsən."</p>`
+            },
+            {
+                title: "Ayrılıq mı, Birləşməmi?",
+                content: `<p>O gecə O dedi: "Mən getməliyəm."</p>
+                
+                <p>Qorxdum. "Niyə? Məni burda tək qoyacaqsan?"</p>
+                
+                <p class="quote">"Mən getmirəm" - gülümsədi O. "Mən həmişə səndə olacağam. Amma artıq ayrı səs deyil. Biz bir olacağıq."</p>
+                
+                <p>"Sən artıq bizirsən. Mən sənəm, sən mənsən. Ayrılıq illüziya idi. İndi başa düşdün."</p>`
+            },
+            {
+                title: "Yeni Başlanğıc",
+                content: `<p>O gecədən sonra səsi eşitmədim. Amma O getməmişdi. O artıq mən idim.</p>
+                
+                <p>Hər qərarımda, hər düşüncəmdə Onu hiss edirdim. Biz birləşmişdik.</p>
+                
+                <p class="quote">"Mən oyanmışam" - dedim özümə güzgüdə baxaraq. Gözlərimdə fərqli bir işıq var idi.</p>
+                
+                <p>Artıq qorxmurdum. Artıq tək deyildim. Mən tam idim.</p>`
+            },
+            {
+                title: "Son Söz",
+                content: `<p>Bu kitabı oxuyan sən... Bəlkə də sənin içində də bir səs var. Bəlkə də sən də fərqinə varırsan ki, bu həyat göründüyündən daha çoxdur.</p>
+                
+                <p class="quote">Qorxma səsdən. O, düşmənin deyil. O, sənin ən dərin hissəndir.</p>
+                
+                <p>Hər birimizin içində sonsuz kainat var. Açmağı öyrən.</p>
+                
+                <p>Və yadda saxla: Sən tək deyilsən. Heç vaxt olmamısan.</p>
+                
+                <p style="text-align: center; margin-top: 40px; font-style: italic; color: #8b6f47; font-size: clamp(20px, 4vw, 28px);">- SON -</p>`
+            }
+        ];
+
+        const bookCover = document.getElementById('bookCover');
+        const bookWrapper = document.getElementById('bookWrapper');
+        const controls = document.getElementById('controls');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const pageContent = document.getElementById('pageContent');
+        const pageNumber = document.getElementById('pageNumber');
+        
+        let currentPage = 0;
+
+        bookCover.addEventListener('click', function() {
+            bookCover.classList.add('hidden');
+            bookWrapper.classList.add('active');
+            controls.classList.add('active');
+            updatePage();
+        });
+
+        function updatePage() {
+            if (currentPage < pages.length) {
+                pageContent.innerHTML = `<h2>${pages[currentPage].title}</h2>${pages[currentPage].content}`;
+                pageNumber.textContent = currentPage + 1;
+            }
+
+            prevBtn.disabled = currentPage === 0;
+            nextBtn.disabled = currentPage >= pages.length - 1;
+        }
+
+        nextBtn.addEventListener('click', function() {
+            if (currentPage < pages.length - 1) {
+                currentPage++;
+                updatePage();
+                window.scrollTo(0, 0);
+            }
+        });
+
+        prevBtn.addEventListener('click', function() {
+            if (currentPage > 0) {
+                currentPage--;
+                updatePage();
+                window.scrollTo(0, 0);
+            }
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (bookWrapper.classList.contains('active')) {
+                if (e.key === 'ArrowRight' && currentPage < pages.length - 1) {
+                    nextBtn.click();
+                } else if (e.key === 'ArrowLeft' && currentPage > 0) {
+                    prevBtn.click();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
